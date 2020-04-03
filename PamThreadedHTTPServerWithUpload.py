@@ -48,7 +48,7 @@ def genRefCookie(location):
 	global cookiesecure
 	cookie=SimpleCookie()
 	cookie['p_ref'] = location
-	cookie['p_ref']['expires'] = 60 * 10
+	cookie['p_ref']['expires'] = 60 * 60* 24
 	cookie['p_ref']['path'] = "/"
 	cookie['p_ref']['httponly'] = True
 
@@ -60,17 +60,22 @@ def genRefCookie(location):
 
 def genCookie(secret_key, username, ipaddress="127.0.0.1", invalid=False):
 	global cookiesecure
+	#expiration=str(datetime.datetime.now()+datetime.timedelta(minutes=60))
 	expiration=str(datetime.datetime.now()+datetime.timedelta(minutes=60))
 	params="username="+username + "&expiration=" + expiration + "&ipaddress=" + str(ipaddress)
 	salt=randomString(stringLength=16)
 	# Username is a pepper, salt is random salt and secret_key is global
 	if invalid==False:
-		signature=hmac.new(ipaddress.encode() + username.encode() + salt.encode()+secret_key, params.encode(), hashlib.sha256).hexdigest()
+		if checkip==True:
+			signature=hmac.new(ipaddress.encode() + username.encode() + salt.encode()+secret_key, params.encode(), hashlib.sha256).hexdigest()
+		else:
+			signature=hmac.new(username.encode() + salt.encode()+secret_key, params.encode(), hashlib.sha256).hexdigest()
+			
 	else:
 		signature="1234"
 	cookie=SimpleCookie()
 	cookie['p_auth'] = params + "&sig=" + salt+signature
-	cookie['p_auth']['expires'] = 60*60
+	cookie['p_auth']['expires'] = 60*60*24
 	cookie['p_auth']['path'] = "/"
 	cookie['p_auth']['httponly'] = True
 	if cookiesecure:
@@ -78,6 +83,8 @@ def genCookie(secret_key, username, ipaddress="127.0.0.1", invalid=False):
 	return cookie
 		
 def validateCookie(secret_key, cookie, clientip):
+	print("In Validate Cookie")
+
 	try:
 		temp=cookie
 		cookie=temp.split("&sig=")[0]
@@ -90,7 +97,13 @@ def validateCookie(secret_key, cookie, clientip):
 				username=y[1]
 				break
 		print("Username", username)
-		sig2=hmac.new(clientip.encode() + username.encode() + salt.encode()+secret_key, cookie.encode(), hashlib.sha256).hexdigest()
+		print("IP Address", clientip)
+
+		if checkip==True:
+			sig2=hmac.new(clientip.encode() + username.encode() + salt.encode()+secret_key, cookie.encode(), hashlib.sha256).hexdigest()
+		else:
+			sig2=hmac.new(username.encode() + salt.encode()+secret_key, cookie.encode(), hashlib.sha256).hexdigest()
+	
 		if not sig1==(salt+sig2):
 			print("Signatures Don't Match")
 			return False
@@ -126,52 +139,16 @@ class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
 
 class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 
-	def do_GET(self):
-		global secret_key
-		cookies=SimpleCookie(self.headers.get('Cookie'))
-
-		path=self.path
-		temp=self.path.replace("//", "/")
-		if not self.path==temp:
-			#print(self.path, temp)
-			self.send_response(301)
-			#temp=self.path.replace("//", "/")
-			temp2=temp
-			while True:
-				temp2=temp2.replace("//", "/")
-				if temp2==temp:
-					break
-				else:
-					temp=temp2
-			self.send_header("Location", temp)
-			self.end_headers()
-
+	# Put Method Unsupported; probably need to add an error message at some point.
+	def do_PUT(self):
+		if not self.react_site():		
 			return None
-		if pamenabled==True:
-			if path=="/authentication_services":
-				self.handle_auth()
-				return None
-			if cookies.get("p_auth") == None:
-				self.send_response(302)
-				self.send_header("Location", "/authentication_services")
-				refCookie=genRefCookie(self.path)
-				self.send_header("Set-cookie", refCookie.output(header='', sep=''))
+		self.do_GET()						
 
-				self.end_headers()
-				return None
-			else:
-				cookie=cookies.get("p_auth").value
-				result=validateCookie(secret_key, cookie, self.client_address[0])
-				if result==False:
-					self.send_response(302)
-					self.send_header("Location", "/authentication_services")
-					refCookie=genRefCookie(self.path)
-					self.send_header("Set-cookie", refCookie.output(header='', sep=''))
-					self.end_headers()
-					return None
-				
+	def do_GET(self):
 
-					
+		if not self.react_site():		
+			return None					
 
 		"""Serve a GET request."""
 		f = self.send_head()
@@ -182,30 +159,6 @@ class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.copyfile(temp, self.wfile)
 			f.close()
 		else:
-			'''f = StringIO()
-			f.write('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-			f.write("<html lang=\"en\">\n<meta charset=\"utf-8\"/>\n<title>404 File Not Found</title>\n")
-			f.write("<body>\n<h2>404 Error File or Directory Not Found</h2>\n")
-			if self.headers.get('referer'):
-				f.write("<br><a href=\"%s\">back</a>" % self.headers.get('referer'))
-			else:
-				f.write("<br><a href=\"/\">back</a>")
-			f.write("</body></html>")
-			f.seek(0)
-			temp=f.read()'''
-			
-			'''self.send_response(301)
-			#self.send_header("Content-type", "text/html")
-			#length = f.tell()
-			self.send_header("Cache-Control", "no-store")
-			print(self.path)
-			self.send_header("Location", "/")
-
-			#self.send_header("Content-Length", str(length))
-			self.end_headers()
-
-			#self.copyfile(temp, self.wfile)
-			#f.close()'''
 			self.send_response(301)
 			temp=self.path.split("/")
 			data=len(temp)-1
@@ -266,7 +219,7 @@ class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 			if cookies.get("p_auth") == None:
 				self.send_response(302)
 				self.send_header("Location", "/authentication_services")
-				refCookie=getRefCookie(self.path)
+				refCookie=genRefCookie(self.path)
 				self.send_header("Set-cookie", refCookie.output(header='', sep=''))
 				self.end_headers()
 				return None
@@ -405,6 +358,69 @@ class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.send_response(500)
 			self.end_headers()
 
+
+	def react_site(self):
+		global secret_key
+		print("In React Site")
+		cookies=SimpleCookie(self.headers.get('Cookie'))
+
+		path=self.path
+		temp=self.path.replace("//", "/")
+
+		print("React Site 1")		
+		if not self.path==temp:
+			#print(self.path, temp)
+			self.send_response(301)
+			#temp=self.path.replace("//", "/")
+			temp2=temp
+			while True:
+				temp2=temp2.replace("//", "/")
+				if temp2==temp:
+					break
+				else:
+					temp=temp2
+			self.send_header("Location", temp)
+			self.end_headers()
+
+			return False
+		print("React Site 2")
+		if pamenabled==True:
+			print("React Site 2a")
+
+			print("React Site 2b")
+
+			if path=="/authentication_services":
+				self.handle_auth()
+				return None
+
+			print("React Site 2c")
+
+			if cookies.get("p_auth") == None:
+				print("No Cookie P_AUTH")
+				self.send_response(302)
+				self.send_header("Location", "/authentication_services")
+				refCookie=genRefCookie(self.path)
+				self.send_header("Set-cookie", refCookie.output(header='', sep=''))
+
+				self.end_headers()
+				return None
+			else:
+				print("Validating Cookie")
+				cookie=cookies.get("p_auth").value
+				result=validateCookie(secret_key, cookie, self.client_address[0])
+				if result==False:
+					print("Cookie did not validate")
+					self.send_response(302)
+					self.send_header("Location", "/authentication_services")
+					refCookie=genRefCookie(self.path)
+					self.send_header("Set-cookie", refCookie.output(header='', sep=''))
+					self.end_headers()
+					return False
+
+		print("React Site 3")
+		return True
+
+
 	def handle_auth(self):
 		global banner
 		print("In Handle Auth")
@@ -443,7 +459,7 @@ function checkSubmit()
 		f.write("<body>")
 		f.write("<B>Authenticate</B>\n")
 		f.write("<hr>\n")
-		f.write("<form ENCTYPE=\"multipart/form-data\" method=\"post\">")
+		f.write("""<form ENCTYPE="multipart/form-data" method="post">""")
 		f.write("<table><tr>")
 
 		f.write("""<td><b>Username:  </b></td><td><input type="username" id="username-input" name="username" readonly onfocus="this.removeAttribute('readonly');"/></td>\n""")
@@ -479,8 +495,19 @@ function checkSubmit()
 
 	
 	def deal_post_data(self):
-		global secret_key
 		print("In Deal Post")
+
+		contenttype=self.headers.get('content-type')
+		returned=self.deal_post_mime()
+		return returned
+
+	def deal_post_plain(self):
+		return("False", "Encoding type text/plain is not supported")
+
+		
+	def deal_post_mime(self):
+		global secret_key
+		print("In deal post mime")
 		if workingpath==None:
 			path=self.translate_path(self.path)
 		else:
@@ -492,22 +519,25 @@ function checkSubmit()
 			length = int(self.headers['content-length'])
 		except:
 			print("Exception, no length data")
-			return
+			return("False", "Error Getting Content-Length")
 		if length<=(4096*1048576):
 			temp=self.rfile.read(length)
 			data=data+temp.decode("cp437")
 		else:
+			print("Upload Limit Error")
 			return (False, "Uploads are limited to 4 GB.")
 		try:
 			msg=email.message_from_string(data)
 		except Exception as e:
+			print("Exception Decoding Mime Message")
 			return(False, "Error Decodong Message")
 		try:
 			encryptionkey=""
 			foundencryption=False
 			validatehash=""
-
+			print(self.path)
 			if self.path=="/authentication_services":
+				print("Trying to Authenticate")
 				username=""
 				password=""
 				if msg.is_multipart():
@@ -530,8 +560,9 @@ function checkSubmit()
 							isAuthorized=True
 						else:
 							isAuthorized=False
-				except:
+				except Exception:
 					isAuthorized=False
+					print("Exception in Authorization", exception)
 					pass
 				
 				
@@ -543,7 +574,7 @@ function checkSubmit()
 
 
 				isAuthenticated=p.authenticate(username, password)
-
+				print("User ", username, " is authenticated ", str(isAuthenticated))
 				if isAuthenticated and isAuthorized:
 					cookie=genCookie(secret_key, username, self.client_address[0])
 					return ("Cookie", cookie)				
@@ -707,16 +738,17 @@ function checkSubmit()
 
 						infile.close()
 
-
+			filecount=0
 			if msg.is_multipart():
 				for item in msg.get_payload():
 					header=item.get("content-disposition")
 					value, params = cgi.parse_header(header)
 					upload=params.get('name')
-
+					print(value, params)
 					if upload=="upload" and not params.get('filename')=="":
 						print("In upload file")
 						datapath=params.get('filename')
+						print("Datapath is ", datapath)
 						if workingpath==None:
 							path = self.translate_path(self.path) + "/" + datapath
 						else:
@@ -762,8 +794,8 @@ function checkSubmit()
 									print("In Exception", logger.error(str(Exception), exc_info=True))
 									return(False, "Error Decrypting File")
 							out.close()
-
-							return("301self", "File Written")
+							filecount=filecount+1
+							returned=("301self", "File Written")
 						except IOError:
 							return (False, "Can't create file to write.")				
 					elif upload=="createdir" and not item.get_payload()=="":
@@ -844,6 +876,8 @@ function checkSubmit()
 								
 						except IOError:
 							return (False, "File not deleted")
+			if filecount>0:
+				return returned
 		except Exception as e:					
 			print("In Exception", logger.error(str(e), exc_info=True))
 			return(False, "POST Form Error Secondary")
@@ -962,16 +996,20 @@ function clearExceptEncryption()
 function checkUpload()
 {
 	var temp, element;
+	var  myHeaders = new Headers();
 	temp=document.getElementById('uploadid').value!='';
 	if(temp==false)
 	{
 		alert("No File Name Specified")
+		return temp;
 	}
 	else
 	{
-		/* element=document.getElementById('createdir-input')
-		element.parentNode.removeChild(element); */
-		document.getElementById('createdir-input').value="";
+		//document.getElementById("directoryid").enctype="application/x-www-form-urlencoded";
+		///myHeaders.set("p_operation", "upload")
+		element=document.getElementById('createdir-input')
+		element.parentNode.removeChild(element);
+
 	}
 	return temp;
 }
@@ -1008,10 +1046,10 @@ function checkDirectory()
 
 		f.write("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
 		f.write("<hr>\n")
-		f.write("<form ENCTYPE=\"multipart/form-data\" method=\"post\" autocomplete=\"off\" \"accept-charset=utf-8\">")
+		f.write("""<form id="directoryid" ENCTYPE="multipart/form-data" method="post" autocomplete="off" "accept-charset=utf-8">""")
 		f.write("<table><tr>")
 		f.write("<td><b>Encryption Key: </b></td><td><input type=\"password\" id=\"encryptionkeyid\" name=\"encryptionkey\" readonly onfocus=\"this.removeAttribute('readonly');\" /></td>\n")
-		f.write('<td><b>Upload File: </b></td><td><input id="uploadid" name="upload" id="upload-input" type="file"/></td>')
+		f.write('<td><b>Upload File: </b></td><td><input id="uploadid" name="upload" id="upload-input" type="file" multiple/></td>')
 		#f.write("""<td><input type="submit" id="uploadid" value="Upload" name="Upload" onClick="return document.getElementById('uploadid').value!=''"/></td>\n""")
 		f.write("""<td><input type="submit" id="uploadid" value="Upload" name="Upload" onClick="return checkUpload()"/></td>\n""")
 		f.write("</tr><tr>")
@@ -1182,8 +1220,8 @@ if __name__ == '__main__':
 	parser.add_argument('--banner', nargs='?', help='Banner')
 	parser.add_argument('--secure', action='store_true', help='Require Cookie to Be Sent Securely')
 	parser.add_argument('--group', nargs='?', help='Authorized Group')
-
 	parser.add_argument('--disablepam', action='store_true', help='Disable Authentication')
+	parser.add_argument('--noip', action='store_true', help='Disables Checking the IP Address as Part of Authentication')
 
 	args = parser.parse_args()
 	port=8000
@@ -1233,6 +1271,11 @@ if __name__ == '__main__':
 		authorizedGroup=args.group
 	else:
 		authorizedGroup=""
+	global checkip
+	if args.noip:
+		checkip=False
+	else:
+		checkip=True
 	
 	run(tcpport=port, address=listen)
 	exit(0)
