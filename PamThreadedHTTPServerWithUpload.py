@@ -1063,7 +1063,9 @@ function checkDirectory()
 		f.write("""<td class="light" style="min-width:200px"><center><b>Name</b></center></td>""")
 		f.write("""<td class="light" style="min-width:100px"><center><b>Size</b></center></td>""")
 		f.write("""<td class="light" style="min-width:100px"><center><b>Last Modified</b></center></td>""")
-		f.write("""<td class="light" style="min-width:100px"><center><b>Action</b></center></td></tr>""")
+		f.write("""<td class="light" style="min-width:100px"><center><b>Action</b></center></td>""")
+		f.write("""<td class="light" style="min-width:100px"><center><b>Save As Link (Does Not Support Encryption)</b></center></td></tr>""")
+
 		if not displaypath=="/":
 			f.write('<td class="light"><button class="link" onclick=\"clearKey()\" type=\"submit\" value=\"..\" formmethod=\"get\" formaction=\"..\">..</button><br/></td>\n')
 			f.write("</tr>")
@@ -1087,7 +1089,7 @@ function checkDirectory()
 			if form==1:
 				#f.write('<a href=\"%s\">%s</a>   ' % (urllib.parse.quote(linkname), urllib.parse.quote(linkname)))
 				f.write('<tr class="light">')
-				f.write('<td class="light"><button onclick=\"clearExceptEncryption()\"formaction=\"%s\" class="link" type=\"submit\" value=\"%s\" name=\"ViewFile\">%s</button></td>\n' % (urllib.parse.quote(linkname), urllib.parse.quote(linkname), cgi.escape(displayname)))
+				f.write('<td class="light"><button onclick=\"clearExceptEncryption()\" formaction=\"%s\" class="link" type=\"submit\" value=\"%s\" name=\"ViewFile\">%s</button></td>\n' % (urllib.parse.quote(linkname), urllib.parse.quote(linkname), cgi.escape(displayname)))
 				filesize=os.path.getsize(fullname)
 				if filesize>=1073741824:
 					filesizetemp=Decimal(filesize/1073741824)
@@ -1111,7 +1113,9 @@ function checkDirectory()
 				f.write('<td class="light">' + str(time.ctime(os.path.getmtime(fullname))) + '</td>')
 				
 				f.write('<td class="light"><center><button onclick=\"clearKey()\" type=\"submit\" value=\"%s\" formaction=\"%s\" name=\"deletefile\">Delete File</button></center></td>\n' % (urllib.parse.quote(linkname), urllib.parse.quote(linkname)))
+				f.write('<td class="light"><a href=\"%s\">%s</a></td>\n' % (urllib.parse.quote(linkname), urllib.parse.quote(linkname)))
 				f.write("</tr>")
+
 			elif form==2:
 				f.write('<tr class="light">')
 				f.write('<td class="light"><button onclick=\"clearKey()\" class="link" type=\"submit\" value=\"%s\" formmethod=\"get\" formaction=\"%s\">%s</button></td>' % (urllib.parse.quote(linkname),  urllib.parse.quote(linkname), cgi.escape(displayname)))
