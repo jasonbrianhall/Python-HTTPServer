@@ -1113,7 +1113,7 @@ function checkDirectory()
 				f.write('<td class="light">' + str(time.ctime(os.path.getmtime(fullname))) + '</td>')
 				
 				f.write('<td class="light"><center><button onclick=\"clearKey()\" type=\"submit\" value=\"%s\" formaction=\"%s\" name=\"deletefile\">Delete File</button></center></td>\n' % (urllib.parse.quote(linkname), urllib.parse.quote(linkname)))
-				f.write('<td class="light"><a href=\"%s\">%s</a></td>\n' % (urllib.parse.quote(linkname), urllib.parse.quote(linkname)))
+				f.write('<td class="light"><a href=\"%s\">%s</a></td>\n' % (urllib.parse.quote(linkname), linkname))
 				f.write("</tr>")
 
 			elif form==2:
