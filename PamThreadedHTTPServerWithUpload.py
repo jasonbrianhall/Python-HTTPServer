@@ -146,7 +146,7 @@ class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.do_GET()						
 
 	def do_GET(self):
-
+		print("Self.Path in DO_GET = " + self.path)
 		if not self.react_site():		
 			return None					
 
@@ -888,9 +888,9 @@ function checkSubmit()
 
 	def send_head(self):
 		if workingpath==None:
-			path = self.translate_path(self.path)
+			path = self.translate_path(urllib.parse.unquote(self.path))
 		else:
-			path = workingpath + self.path
+			path = workingpath + urllib.parse.unquote(self.path)
 
 		f = None
 		if "?" in self.path:
