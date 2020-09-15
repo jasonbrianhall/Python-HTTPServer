@@ -193,7 +193,11 @@ class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 				return None
 			else:
 				cookie=cookies.get("p_auth").value
-				result=validateCookie(secret_key, cookie, self.client_address[0])
+				clientip=self.client_address[0]
+				if clientip=="127.0.0.1":
+					if not self.headers.get("x-forwarded-for")=="":
+						clientip=self.headers.get("x-forwarded-for")			
+				result=validateCookie(secret_key, cookie, clientip)
 				if result==False:
 					self.send_response(302)
 					self.send_header("Location", "/authentication_services")
@@ -225,7 +229,12 @@ class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 				return None
 			else:
 				cookie=cookies.get("p_auth").value
-				result=validateCookie(secret_key, cookie, self.client_address[0])
+				clientip=self.client_address[0]
+				if clientip=="127.0.0.1":
+					if not self.headers.get("x-forwarded-for")=="":
+						clientip=self.headers.get("x-forwarded-for")			
+
+				result=validateCookie(secret_key, cookie, clientip)
 				if result==False:
 					self.send_response(302)
 					self.send_header("Location", "/authentication_services")
@@ -342,7 +351,11 @@ class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 					if temp2[0]=="username":
 						username=temp2[1]
 						break
-				cookie=genCookie(secret_key, username, self.client_address[0])
+				clientip=self.client_address[0]
+				if clientip=="127.0.0.1":
+					if not self.headers.get("x-forwarded-for")=="":
+						clientip=self.headers.get("x-forwarded-for")			
+				cookie=genCookie(secret_key, username, clientip)
 				self.send_header("Set-cookie", cookie.output(header='', sep=''))
 
 				self.send_header("Content-Length", str(length))
@@ -407,7 +420,11 @@ class MainProcess(BaseHTTPServer.BaseHTTPRequestHandler):
 			else:
 				print("Validating Cookie")
 				cookie=cookies.get("p_auth").value
-				result=validateCookie(secret_key, cookie, self.client_address[0])
+				clientip=self.client_address[0]
+				if clientip=="127.0.0.1":
+					if not self.headers.get("x-forwarded-for")=="":
+						clientip=self.headers.get("x-forwarded-for")			
+				result=validateCookie(secret_key, cookie, clientip)
 				if result==False:
 					print("Cookie did not validate")
 					self.send_response(302)
@@ -576,7 +593,12 @@ function checkSubmit()
 				isAuthenticated=p.authenticate(username, password)
 				print("User ", username, " is authenticated ", str(isAuthenticated))
 				if isAuthenticated and isAuthorized:
-					cookie=genCookie(secret_key, username, self.client_address[0])
+					clientip=self.client_address[0]
+					if clientip=="127.0.0.1":
+						if not self.headers.get("x-forwarded-for")=="":
+							clientip=self.headers.get("x-forwarded-for")			
+
+					cookie=genCookie(secret_key, username, clientip)
 					return ("Cookie", cookie)				
 				else:
 					return("Unauthenticated", "Authentication Failure")
@@ -621,7 +643,12 @@ function checkSubmit()
 						while secret_key==wrongkey:
 							wrongkey = randomString().encode()
 
-						cookie=genCookie(wrongkey, "signout", self.client_address[0])
+						clientip=self.client_address[0]
+						if clientip=="127.0.0.1":
+							if not self.headers.get("x-forwarded-for")=="":
+								clientip=self.headers.get("x-forwarded-for")			
+
+						cookie=genCookie(wrongkey, "signout", clientip)
 						'''cookie['p_auth']="Expired"
 						cookie['p_auth']['expires'] = "Thu, 01 Jan 1970 00:00:00 GMT"
 						cookie['p_auth']['path'] = "/"
@@ -673,8 +700,13 @@ function checkSubmit()
 								if temp2[0]=="username":
 									username=temp2[1]
 									break
-							print("Sending IP Address", self.client_address[0])
-							cookie=genCookie(secret_key, username, self.client_address[0])
+							clientip=self.client_address[0]
+							if clientip=="127.0.0.1":
+								if not self.headers.get("x-forwarded-for")=="":
+									clientip=self.headers.get("x-forwarded-for")			
+
+							print("Sending IP Address", clientip)
+							cookie=genCookie(secret_key, username, clientip)
 
 							self.send_header("Content-type", ctype)
 							self.send_header("Set-cookie", cookie.output(header='', sep=''))
@@ -710,7 +742,12 @@ function checkSubmit()
 							self.send_response(200)
 
 							self.send_header("Content-Length", origsize)
-							cookie=genCookie(secret_key, username, self.client_address[0])
+							clientip=self.client_address[0]
+							if clientip=="127.0.0.1":
+								if not self.headers.get("x-forwarded-for")=="":
+									clientip=self.headers.get("x-forwarded-for")			
+
+							cookie=genCookie(secret_key, username, clientip)
 							self.send_header("Set-cookie", cookie.output(header='', sep=''))
 
 							self.send_header("Content-type", ctype)
@@ -933,17 +970,23 @@ function checkSubmit()
 		self.send_header("Cache-Control", "no-store")
 
 		self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
-		cookies=SimpleCookie(self.headers.get('Cookie'))
 		username=""
-		pauth=cookies.get("p_auth").value
-		temp=pauth.split("&")
-		for x in temp:
-			temp2=x.split("=")
-			if temp2[0]=="username":
-				username=temp2[1]
-				break
-		cookie=genCookie(secret_key, username, self.client_address[0])
-		self.send_header("Set-cookie", cookie.output(header='', sep=''))
+		if pamenabled==True:
+			cookies=SimpleCookie(self.headers.get('Cookie'))
+			pauth=cookies.get("p_auth").value
+			temp=pauth.split("&")
+			for x in temp:
+				temp2=x.split("=")
+				if temp2[0]=="username":
+					username=temp2[1]
+					break
+			clientip=self.client_address[0]
+			if clientip=="127.0.0.1":
+				if not self.headers.get("x-forwarded-for")=="":
+					clientip=self.headers.get("x-forwarded-for")			
+
+			cookie=genCookie(secret_key, username, clientip)
+			self.send_header("Set-cookie", cookie.output(header='', sep=''))
 		self.end_headers()
 		return f
 
@@ -1137,17 +1180,24 @@ function checkDirectory()
 		f.seek(0)
 		self.send_response(200)
 		self.send_header("Content-type", "text/html")
-		cookies=SimpleCookie(self.headers.get('Cookie'))
 		username=""
-		pauth=cookies.get("p_auth").value
-		temp=pauth.split("&")
-		for x in temp:
-			temp2=x.split("=")
-			if temp2[0]=="username":
-				username=temp2[1]
-				break
-		cookie=genCookie(secret_key, username, self.client_address[0])
-		self.send_header("Set-cookie", cookie.output(header='', sep=''))
+		if pamenabled==True:
+
+			cookies=SimpleCookie(self.headers.get('Cookie'))
+			pauth=cookies.get("p_auth").value
+			temp=pauth.split("&")
+			for x in temp:
+				temp2=x.split("=")
+				if temp2[0]=="username":
+					username=temp2[1]
+					break
+			clientip=self.client_address[0]
+			if clientip=="127.0.0.1":
+				if not self.headers.get("x-forwarded-for")=="":
+					clientip=self.headers.get("x-forwarded-for")			
+
+			cookie=genCookie(secret_key, username, clientip)
+			self.send_header("Set-cookie", cookie.output(header='', sep=''))
 
 		self.send_header("Content-Length", str(length))
 		self.end_headers()
