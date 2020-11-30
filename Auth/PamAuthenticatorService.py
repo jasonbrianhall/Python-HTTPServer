@@ -56,9 +56,10 @@ def randomString(stringLength=64):
 
 def genRefCookie(location):
 	global cookiesecure
+	global timeout
 	cookie=SimpleCookie()
 	cookie['p_ref'] = location
-	cookie['p_ref']['expires'] = 60 * 60* 24
+	cookie['p_ref']['expires'] = 30 * 60* 24
 	cookie['p_ref']['path'] = "/"
 	cookie['p_ref']['httponly'] = True
 
@@ -1117,6 +1118,7 @@ if __name__ == '__main__':
 	parser.add_argument('--pamservice', nargs='?', help='PAM Service (defaults to login)') 	
 	parser.add_argument('--cert', nargs='?', help='SSL Cert')
 	parser.add_argument('--passwordtext', nargs='?', help='Plaintext Password (if clustering or debugging)')
+	parser.add_argument('--timeout', nargs='?', help='How long a user stays logged in for without activity (defaults to 60 minutes)')
 
 	args = parser.parse_args()
 	port=8000
@@ -1191,6 +1193,16 @@ if __name__ == '__main__':
 		passwordText=args.passwordtext
 	else:
 		passwordText="Password"
+
+	global timeout
+	if args.timeout:
+		try:
+			timeout=int(args.timeout)
+		except:
+			print("Timeout must be an integer")
+			sys.exit(1)
+	else:
+		timeout=60
 
 
 	global pamservice

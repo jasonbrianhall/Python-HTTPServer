@@ -35,6 +35,7 @@ import datetime
 import random
 from decimal import Decimal
 import time
+import sys
 import grp, pwd
 
 logger=logging.getLogger()
@@ -46,9 +47,10 @@ def randomString(stringLength=64):
 
 def genRefCookie(location):
 	global cookiesecure
+	global timeout
 	cookie=SimpleCookie()
 	cookie['p_ref'] = location
-	cookie['p_ref']['expires'] = 60 * 60* 24
+	cookie['p_ref']['expires'] = timeout * 60 * 24
 	cookie['p_ref']['path'] = "/"
 	cookie['p_ref']['httponly'] = True
 
@@ -1276,6 +1278,7 @@ if __name__ == '__main__':
 	parser.add_argument('--group', nargs='?', help='Authorized Group')
 	parser.add_argument('--disablepam', action='store_true', help='Disable Authentication')
 	parser.add_argument('--noip', action='store_true', help='Disables Checking the IP Address as Part of Authentication')
+	parser.add_argument('--timeout', nargs='?', help='User inactivity timeout; defaults to 60 minutes')
 
 	args = parser.parse_args()
 	port=8000
@@ -1330,6 +1333,15 @@ if __name__ == '__main__':
 		checkip=False
 	else:
 		checkip=True
+	global timeout
+	if args.timeout:
+		try:
+			timeout=int(args.timeout)
+		except:
+			print("Timeout isn't an integer; exiting")
+			sys.exit(1)
+	else:
+		timeout=60
 	
 	run(tcpport=port, address=listen)
 	exit(0)
